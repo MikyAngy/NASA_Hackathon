@@ -14,7 +14,8 @@ model = AutoModelForCausalLM.from_pretrained(
     model_id,
     dtype="auto",
     device_map="auto"
-)
+).eval()
+
 print("¡Modelo cargado!")
 
 # --- 2. Creamos un streamer ---
