@@ -5,7 +5,7 @@ from langchain_core.prompts import PromptTemplate
 
 # --- 1. Carga del Modelo y Tokenizador (Igual que antes) ---
 print("Cargando el modelo y tokenizador...")
-model_id = "Qwen/Qwen2-1B-Instruct"
+model_id = "Qwen/Qwen2-1.5B-Instruct"
 
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 model = AutoModelForCausalLM.from_pretrained(
@@ -52,12 +52,21 @@ print("\n--- Probando con una cadena LCEL ---")
 # Creamos una plantilla de prompt. La variable {topic} será llenada dinámicamente.
 template = """
 <|im_start|>system
-Eres un experto explicando temas complejos de forma sencilla.<|im_end|>
+Eres un experto explicando temas complejos de forma sencilla.
+Siempre responde en menos de 100 palabras.<|im_end|>
 <|im_start|>user
-Explica qué es '{topic}' en menos de 50 palabras.<|im_end|>
+Tipo de documento	                      ¿Obligatorio por contabilidad?	                  Valor probatorio esperado	                                         Acción recomendada
+Estados financieros y pólizas	             Sí (art. 28 cff y NIF)	                     Alto: soporte financiero de operaciones	            Conciliaciones periódicas y auxiliares por operación
+CFDI y contratos/órdenes	                 Sí (comprobación)	                     Alto: materialidad y causa del ingreso/egreso	                 Expediente por cliente/proveedor con anexos
+Estudios de mercado / precios	                 No siempre	                              Medio-Alto: justificación económica	                       Versión pública y nota metodológica
+Presupuestos y proyecciones	                         No	                                  Medio: planeación y razonabilidad	                            Resguardo con control de cambios
+Modelos de transfer pricing	                   Sí (cuando aplica)	                         Alto: sustento de vinculación	                       Estudios actualizados y papeles de trabajo
+Soporte bancario	                           Sí (trazabilidad)	                   Alto: flujo de efectivo y correspondencia	                     Conciliar depósitos y pagos por operación
+
+**Segun la información anterior, responde: '{prompt}'<|im_end|>
 <|im_start|>assistant
 """
-prompt_template = PromptTemplate(template=template, input_variables=["topic"])
+prompt_template = PromptTemplate(template=template, input_variables=["prompt"])
 
 # Creamos la cadena (chain) usando el operador "|" (pipe)
 # 1. El input (un diccionario) se pasa a la plantilla.
@@ -65,8 +74,8 @@ prompt_template = PromptTemplate(template=template, input_variables=["topic"])
 chain = prompt_template | llm
 
 # Ejecutamos la cadena con un tema específico
-topic = "la computación cuántica"
-respuesta_cadena = chain.invoke({"topic": topic})
+prompt = input("Inserta tu prompt:")
+respuesta_cadena = chain.invoke({"prompt": prompt})
 
-print(f"Pregunta sobre: {topic}")
+print(f"Pregunta sobre: {prompt}")
 print(f"Respuesta de la cadena: {respuesta_cadena.strip()}")
