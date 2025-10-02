@@ -1,0 +1,14 @@
+#Fastapi
+fastapi
+uvicorn
+python-multipart
+
+#LangChain
+langchain
+langchain_community
+
+#Utils
+torch
+transformers
+accelerate
+huggingface_hub[cli]
