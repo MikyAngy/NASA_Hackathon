@@ -8,6 +8,7 @@ langchain
 langchain_community
 
 # Indicamos a pip que también busque paquetes en el repositorio de PyTorch para CUDA 12.4
+# Esto se define al corroborar la version de CUDA del sistema mediante el cmd con el comando: nvidia-smi
 --extra-index-url https://download.pytorch.org/whl/cu124
 
 # Listamos los paquetes de PyTorch normalmente
