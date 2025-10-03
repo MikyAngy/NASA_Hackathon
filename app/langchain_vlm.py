@@ -1,77 +1,66 @@
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, TextIteratorStreamer
-from langchain_core.prompts import PromptTemplate
-import threading
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers.generation.streamers import TextIteratorStreamer
+from threading import Thread
+import os
 
-# --- 1. Carga del modelo y tokenizador ---
-print("Cargando el modelo y tokenizador...")
-model_id = "Qwen/Qwen-VL-Chat"
+# --- 1. Configuración ---
+MODEL_ID = "Qwen/Qwen-VL-Chat"
 
 # --- MODIFICA ESTAS LÍNEAS ---
-IMAGE_PATH = "app\manati_real_smoking.jpg" 
+IMAGE_PATH = "manati_real_smoking.jpg"
+TEXT_PROMPT = input("Escribe tu prompt: ")
 # --- FIN DE LA MODIFICACIÓN ---
 
-tokenizer = AutoTokenizer.from_pretrained(model_id)
-model = AutoModelForCausalLM.from_pretrained(
-    model_id,
-    device_map="auto"
-).eval()
+try:
+    # --- 2. Carga del Modelo y Tokenizador ---
+    print(f"Cargando el modelo: {MODEL_ID}...")
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, trust_remote_code=True)
+    model = AutoModelForCausalLM.from_pretrained(
+        MODEL_ID, 
+        device_map="auto", 
+        trust_remote_code=True
+    ).eval()
+    print("¡Modelo cargado exitosamente!")
 
-print("¡Modelo cargado!")
+    # --- 3. Preparación para el Streaming ---
+    # Creamos el streamer que recibirá los tokens.
+    streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
 
-# --- 2. Creamos un streamer ---
-streamer = TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
+    # --- 4. Creación del Prompt Multimodal ---
+    print(f"\nProcesando la imagen: {IMAGE_PATH}")
+    print(f"Pregunta: {TEXT_PROMPT}")
 
-def generate_stream(prompt):
-    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+    if not os.path.exists(IMAGE_PATH):
+        raise FileNotFoundError(f"No se pudo encontrar la imagen en la ruta: {IMAGE_PATH}")
 
-    thread = threading.Thread(
-        target=model.generate,
-        kwargs=dict(
-            **inputs,
-            max_new_tokens=256,
-            do_sample=True,
-            temperature=0.7,
-            top_p=0.95,
-            streamer=streamer
-        )
-    )
-    thread.start()
-
-    return streamer
-
-# --- 3. Integrar con LangChain ---
-template = """
-<|im_start|>system
-Eres un experto explicando temas complejos de forma sencilla.
-Siempre responde en menos de 100 palabras.<|im_end|>
-<|im_start|>user
-Tipo de documento	                      ¿Obligatorio por contabilidad?	                  Valor probatorio esperado	                                         Acción recomendada
-Estados financieros y pólizas	             Sí (art. 28 cff y NIF)	                     Alto: soporte financiero de operaciones	            Conciliaciones periódicas y auxiliares por operación
-CFDI y contratos/órdenes	                 Sí (comprobación)	                     Alto: materialidad y causa del ingreso/egreso	                 Expediente por cliente/proveedor con anexos
-Estudios de mercado / precios	                 No siempre	                              Medio-Alto: justificación económica	                       Versión pública y nota metodológica
-Presupuestos y proyecciones	                         No	                                  Medio: planeación y razonabilidad	                            Resguardo con control de cambios
-Modelos de transfer pricing	                   Sí (cuando aplica)	                         Alto: sustento de vinculación	                       Estudios actualizados y papeles de trabajo
-Soporte bancario	                           Sí (trazabilidad)	                   Alto: flujo de efectivo y correspondencia	                     Conciliar depósitos y pagos por operación
-
-** Segun la información anterior, responde: '{prompt}'<|im_end|>
-<|im_start|>assistant
-"""
-prompt_template = PromptTemplate(template=template, input_variables=["prompt"])
-
-# Función que combina LangChain con streaming
-def run_chain_with_streaming(user_prompt: str):
-    # Renderiza el prompt con LangChain
     query = tokenizer.from_list_format([
         {'image': IMAGE_PATH},
-        {'text': user_prompt},
+        {'text': TEXT_PROMPT},
     ])
-    # Inicia generación en streaming
-    for token in generate_stream(query):
-        print(token, end="", flush=True)  # aquí podrías enviar tokens a WebSocket/API
-    print()
+    inputs = tokenizer(query, return_tensors='pt').to(model.device)
 
-# --- 4. Ejecutar ---
-while True:
-    prompt = input("Inserta tu prompt: ")
-    run_chain_with_streaming(prompt)
+   # --- 5. Generación Directa (MODO DEPURACIÓN) ---
+    # Al llamar a model.generate() directamente, cualquier error que ocurra
+    # será "atrapado" por nuestro bloque try...except principal.
+    # El efecto de streaming no se verá en tiempo real, pero podremos diagnosticar.
+    print("\n--- Ejecutando en modo de depuración para ver el error completo ---")
+    generation_kwargs = dict(inputs, streamer=streamer, max_new_tokens=512)
+    
+    # Esta línea ahora se ejecutará en el hilo principal y revelará el error
+    model.generate(**generation_kwargs)
+    
+    # --- 6. Consumir el Stream (se imprimirá todo de golpe al final) ---
+    print("\n--- Respuesta del Modelo ---")
+    full_response = ""
+    for new_text in streamer:
+        full_response += new_text
+        print(new_text, end="", flush=True)
+
+    print("\n\n--- Fin de la generación ---")
+    
+except FileNotFoundError as e:
+    print(f"\nERROR: {e}")
+    print("Por favor, asegúrate de que la variable IMAGE_PATH apunte a un archivo de imagen válido.")
+except Exception as e:
+    print(f"\nHa ocurrido un error inesperado: {e}")
