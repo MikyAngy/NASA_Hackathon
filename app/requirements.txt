@@ -2,6 +2,7 @@
 fastapi
 uvicorn
 python-multipart
+websockets
 
 #LangChain
 langchain
@@ -12,17 +13,13 @@ langchain_community
 --extra-index-url https://download.pytorch.org/whl/cu124
 
 # Listamos los paquetes de PyTorch normalmente
- torch==2.6.0+cu124
- torchvision==0.21.0+cu124
- torchaudio==2.6.0+cu124
+torch==2.6.0+cu124
+torchvision==0.21.0+cu124
+torchaudio==2.6.0+cu124
 
 #Utils
 transformers
 accelerate
 huggingface_hub[cli]
 huggingface_hub[hf_xet]
-matplotlib 
-tiktoken
-einops
-transformers_stream_generator
 safetensors   # La librería puede acceder a los pesos directamente desde el archivo en el disco como si estuvieran en la RAM
