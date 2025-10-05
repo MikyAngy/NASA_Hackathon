@@ -7,12 +7,46 @@ export default function CenterSearchWeb() {
   const [q, setQ] = useState("");
   const navigate = useNavigate(); // 👈 inicializamos el navegador
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Buscar:", q);
 
-    // 👇 redirige a la página 2
-    navigate("/pag2");
+    // 1. Prepara los datos que vas a enviar
+    const dataToSend = {
+      prompt: q,
+    };
+
+    // setIsLoading(true);
+    // setError(null);
+
+    try {
+      // 2. Realiza la petición fetch
+      const response = await fetch('http://localhost:8000/data_ingestion', {
+        method: 'POST', // Especifica el método
+        headers: {
+          'Content-Type': 'application/json', // Informa al servidor que envías JSON
+        },
+        body: JSON.stringify(dataToSend), // Convierte el objeto de JS a un string JSON
+      });
+
+      if (!response.ok) {
+        // Si el servidor responde con un error (ej: 404, 500)
+        throw new Error(`Error HTTP: ${response.status}`);
+      }
+
+      // 3. Procesa la respuesta del servidor
+      const result = await response.json();
+      // setResponseMessage(result.message || 'Datos enviados con éxito');
+      // console.log('Respuesta del servidor:', result);
+      localStorage.setItem('relevant_art',JSON.stringify(result))
+      navigate("/pag3");
+
+    } catch (err: any) {
+      // setError(err.message);
+      console.error("Error al enviar los datos:", err);
+    }
+
+    // // 👇 redirige a la página 2
   };
 
   return (

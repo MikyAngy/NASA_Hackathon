@@ -3,21 +3,47 @@ import * as React from "react";
 import { PieChart } from "@mui/x-charts/PieChart";
 import { useNavigate } from "react-router-dom"; // 👈 Importamos el hook
 
+export type Articles = {
+  [key: string]: number;
+}
+
 export default function PageWithEditableDonutAndChat() {
-  const [values, setValues] = React.useState<number[]>([30, 20, 20, 30]);
+  const [values, setValues] = React.useState<Articles>(JSON.parse(localStorage.getItem('relevant_art')!));
   const navigate = useNavigate(); // 👈 inicializamos la navegación
 
-  const data = values.map((v, i) => ({
-    label: `Categoría ${i + 1}`,
+  const data = Object.entries(values).map(([k, v], i) => ({
+    label: 'Articulo '+(i+1),
     value: v,
     color: ["#2563EB", "#10B981", "#F59E0B", "#EF4444"][i],
   }));
+  // React.useEffect(() => {
+  //     // 1. Obtener el STRING desde localStorage
+  //   const jsonString = localStorage.getItem('relevant_art');
 
-  const handleChange = (idx: number, next: number) => {
-    if (Number.isNaN(next)) return;
-    const nv = Math.max(0, Math.min(100, next)); // 0–100
-    setValues((prev) => prev.map((v, i) => (i === idx ? nv : v)));
-  };
+  //   // IMPORTANTE: Verificar que el dato exista antes de continuar
+  //   if (jsonString) {
+  //     try {
+  //       // 2. Convertir el STRING a un OBJETO JavaScript
+  //       const dataObject = JSON.parse(jsonString);
+
+  //       // // 3. ¡Ahora sí! Aplicar Object.values() al OBJETO
+  //       // const new_values:Articles[] = Object.values(dataObject);
+        
+  //       // console.log('Valores obtenidos:', new_values); // Debería ser ['Ana', 30] o similar
+  //       setValues(dataObject);
+
+  //     } catch (error) {
+  //       console.error("Error al parsear el JSON de localStorage:", error);
+  //     }
+  //   }
+  //   }, []); // Se ejecuta cada vez que llega un mensaje nuevo
+  
+
+  // const handleChange = (idx: number, next: number) => {
+  //   if (Number.isNaN(next)) return;
+  //   const nv = Math.max(0, Math.min(100, next)); // 0–100
+  //   setValues((prev) => prev.map((v, i) => (i === idx ? nv : v)));
+  // };
 
   return (
     <div style={styles.page}>

@@ -2,23 +2,27 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { BarChart } from "@mui/x-charts/BarChart";
+import type { Articles } from "./Pag2";
 
 type Item = { id: number; label: string; href: string };
 
 export default function PageWithBarsAndChecklist() {
   // 10 elementos seleccionables
-  const items: Item[] = [
-    { id: 1, label: "Artículo 1", href: "#" },
-    { id: 2, label: "Artículo 2", href: "#" },
-    { id: 3, label: "Artículo 3", href: "#" },
-    { id: 4, label: "Artículo 4", href: "#" },
-    { id: 5, label: "Artículo 5", href: "#" },
-    { id: 6, label: "Artículo 6", href: "#" },
-    { id: 7, label: "Artículo 7", href: "#" },
-    { id: 8, label: "Artículo 8", href: "#" },
-    { id: 9, label: "Artículo 9", href: "#" },
-    { id: 10, label: "Artículo 10", href: "#" },
-  ];
+  // const items: Item[] = [
+  //   { id: 1, label: "Artículo 1", href: "#" },
+  //   { id: 2, label: "Artículo 2", href: "#" },
+  //   { id: 3, label: "Artículo 3", href: "#" },
+  //   { id: 4, label: "Artículo 4", href: "#" },
+  //   { id: 5, label: "Artículo 5", href: "#" },
+  //   { id: 6, label: "Artículo 6", href: "#" },
+  //   { id: 7, label: "Artículo 7", href: "#" },
+  //   { id: 8, label: "Artículo 8", href: "#" },
+  //   { id: 9, label: "Artículo 9", href: "#" },
+  //   { id: 10, label: "Artículo 10", href: "#" },
+  // ];
+
+  const [items, ] = React.useState<Articles>(JSON.parse(localStorage.getItem('relevant_art')!));
+  
 
   const [selected, setSelected] = React.useState<Record<number, boolean>>({});
   const navigate = useNavigate();
@@ -40,8 +44,9 @@ export default function PageWithBarsAndChecklist() {
     { name: "NombreE", value: 2 },
   ].sort((a, b) => b.value - a.value);
 
-  const categories = data.map((d) => d.name);
-  const values = data.map((d) => d.value);
+  const categories = Object.entries(items).map((_,i) => i+1);
+  console.log(categories)
+  const values = Object.entries(items).map(([k,v]) => v);
 
   // Acción del botón según cantidad
   const handlePrimaryAction = () => {
@@ -95,24 +100,22 @@ export default function PageWithBarsAndChecklist() {
           </div>
 
           <ul style={styles.list}>
-            {items.map((it) => (
-              <li key={it.id} style={styles.listItem}>
-                <label style={styles.checkRow}>
-                  <input
+            {Object.entries(items).map(([k,v],key) => (
+              <li key={key} style={styles.listItem}>
+                {/* <label style={styles.checkRow}> */}
+                  {/* <input
                     type="checkbox"
                     checked={!!selected[it.id]}
                     onChange={() => toggle(it.id)}
                     style={styles.checkbox}
-                  />
-                  <a
-                    href={it.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={styles.link}
+                  /> */}
+                  <div
+                    style={{ ...styles.link, cursor: 'pointer' }} // 👈 Se añade cursor: 'pointer'
+                    onClick={() => navigate(`/pag5?title=${encodeURIComponent(k)}`)}
                   >
-                    {it.label}
-                  </a>
-                </label>
+                    {key + 1} {k}
+                  </div>
+                {/* </label> */}
               </li>
             ))}
           </ul>

@@ -15,6 +15,8 @@ model = genai.GenerativeModel("gemini-2.5-flash-lite")
 def gemini_generate(full_prompt:str):        
     # La API de Gemini funciona con una lista de "turnos".
     # Aquí combinamos todo en el primer turno del usuario.
+    print('FULL PROMPT', full_prompt, flush=True)
+
     messages = [
         {
             'role': 'user',

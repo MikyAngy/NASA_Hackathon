@@ -1,8 +1,10 @@
 import pandas as pd
 import os
+import json
+import re
 
 def buscar_correspondencia_pandas(df: pd.DataFrame, title: str = None, link: str = None):
-    """
+    """ 
     Busca de forma eficiente usando la indexación booleana de Pandas.
     """
     try:
@@ -65,3 +67,16 @@ def leer_columnas_csv(ruta_del_archivo: str, title: str = None, link: str = None
         print(f"❌ Ocurrió un error inesperado al leer el archivo: {e}")
 
     return titulos, links
+
+def parse_json_string(cadena: str) -> dict:
+    # 1. Elimina el bloque ```json ... ```
+    if cadena.startswith("```json") or cadena.startswith("```"):
+        # Usa regex para quitar ```json y ```
+        cadena = re.sub(r"^```json\s*|\s*```$", "", cadena.strip(), flags=re.IGNORECASE)
+
+    # 2. Carga como JSON
+    try:
+        return json.loads(cadena)
+    except json.JSONDecodeError as e:
+        print("Error al parsear JSON:", e)
+        raise

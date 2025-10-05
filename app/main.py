@@ -1,4 +1,6 @@
+from typing import Optional
 from fastapi import FastAPI, HTTPException, WebSocket, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from models import langchain_llm as llm
 from models import gemini
@@ -7,14 +9,31 @@ from milvus.loader import get_url_content
 from milvus.splitter import chunk_documents 
 from milvus.embedding import embeddings, EMBEDDING_MODEL
 import datetime
-from utils.helpers import leer_columnas_csv
+from utils.helpers import leer_columnas_csv, parse_json_string
 from collections import defaultdict
 
 app = FastAPI()
 
 app.include_router(connection_router)
 
-def semantic_search(prompt):
+# Lista de orígenes permitidos (tu frontend de React)
+# Asegúrate de que el puerto sea el correcto (3000, 5173, etc.)
+origins = [
+    "http://localhost:5173", # Puerto común para Vite
+    "http://127.0.0.1:5173",
+]
+
+# --- AÑADE ESTE CÓDIGO ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # Permite los orígenes especificados
+    allow_credentials=True, # Permite cookies y credenciales
+    allow_methods=["*"],    # Permite todos los métodos (GET, POST, etc.)
+    allow_headers=["*"],    # Permite todos los encabezados
+)
+# -------------------------
+
+def semantic_search(prompt,limit=10):
     query_vector = embeddings.embed_query(prompt)
     print('EMBEDDING GENERADO',flush=True)
     # Cambiamos la métrica a "COSINE". La interpretación del score cambia.
@@ -31,7 +50,7 @@ def semantic_search(prompt):
         data=[query_vector],
         anns_field="embedding",
         param=search_params,
-        limit=10,
+        limit=limit,
         output_fields=["content","title"]
     )
 
@@ -76,19 +95,19 @@ def contar_chunks_por_titulo(resultados_milvus: list) -> dict:
     return dict(conteo_de_titulos) # Convertimos a un dict normal para la salida
 
 class requestAnalyzeArticle(BaseModel):
-    title:str=None,
-    url:str=None
+    title:Optional[str]=None,
+    url:Optional[str]=None
 
 @app.post("/analyze_article")
 def analyze_article(request:requestAnalyzeArticle):
     if request.title:  
         url = leer_columnas_csv('./utils/SB_publication_PMC.csv',title=request.title)
-        print('[DEBUG] Link encontrado por titulo',url,flush=True)
-
+        # print('[DEBUG] Link encontrado por titulo',url,flush=True)
+    else: url = request.url
     documents = get_url_content({"url":url}) 
 
     page_contents = "\n".join([doc.page_content for doc in documents])
-    print('[DEBUG] Contenido de las paginas como string',page_contents,flush=True)
+    # print('[DEBUG] Contenido de las paginas como string',page_contents,flush=True)
 
     full_prompt = (f"""
     # ROL Y OBJETIVO
@@ -104,7 +123,7 @@ def analyze_article(request:requestAnalyzeArticle):
     2.  Asigna un porcentaje a cada una de las tres categorías basándote en la inclusion de cada una de ellas en el artículo.
     3.  Los porcentajes de cada categoria son independientes.
     4.  Proporciona una justificación muy breve para cada porcentaje asignado.
-    5.  Responde únicamente con el objeto JSON solicitado.
+    5.  Responde únicamente con el objeto JSON solicitado, limpio y serializable
 
     **Artículo**
     ---
@@ -138,14 +157,22 @@ def analyze_article(request:requestAnalyzeArticle):
     # print('CHUNKS DEVUELTOS',chunks,flush=True)
     finall_answer = ""
     for chunk in chunks:
-        print(chunk.text,end="",flush=True)
+        finall_answer += chunk.text
+        # print(chunk.text,end="",flush=True)
         # await websocket.send_text(chunk.text)
     
-    print('RESPUESTA FINAL',finall_answer,flush=True)
- 
+    # print('RESPUESTA FINAL',finall_answer,flush=True)
+    return parse_json_string(finall_answer)
 
 class requestLlmResponse(BaseModel):
     prompt: str
+
+@app.post("/data_ingestion")
+def article_search(request: requestLlmResponse):
+    knowledge = semantic_search(request.prompt, 4)
+    # print('KNOWLEDGE',knowledge,flush=True)
+    return contar_chunks_por_titulo(knowledge)
+    # print("TITULOS RELEVANTES",relevant_docs,flush=True)
     
 @app.websocket("/llm_response")
 async def llm_response(websocket: WebSocket):
