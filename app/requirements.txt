@@ -17,9 +17,20 @@ torch==2.6.0+cu124
 torchvision==0.21.0+cu124
 torchaudio==2.6.0+cu124
 
+# GEMINI
+google-generativeai
+langchain_google_genai
+
 #Utils
 transformers
 accelerate
 huggingface_hub[cli]
 huggingface_hub[hf_xet]
 safetensors   # La librería puede acceder a los pesos directamente desde el archivo en el disco como si estuvieran en la RAM
+python-dotenv
+tiktoken
+bs4
+pandas
+
+#Milvus
+pymilvus>=2.4.0
