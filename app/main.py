@@ -9,8 +9,11 @@ from milvus.loader import get_url_content
 from milvus.splitter import chunk_documents 
 from milvus.embedding import embeddings, EMBEDDING_MODEL
 import datetime
+import json
 from utils.helpers import leer_columnas_csv, parse_json_string
 from collections import defaultdict
+from models.generate_chart import _chart_tool_entrypoint  # o chart_tool.func
+import traceback
 
 app = FastAPI()
 
@@ -63,36 +66,78 @@ def semantic_search(prompt,limit=10):
     # ]
     return hits
 
-def contar_chunks_por_titulo(resultados_milvus: list) -> dict:
+def procesar_articulos_desde_milvus(resultados_milvus: list) -> dict:
     """
-    Procesa los resultados de una búsqueda en Milvus para contar cuántos chunks
-    pertenecen a cada título único.
+    Agrupa chunks por título, cuenta cuántos hay por cada uno, y genera una
+    categoría y resumen para cada artículo único usando una API de LLM.
 
     Args:
-        resultados_milvus: El objeto de resultados devuelto por collection.search().
+        resultados_milvus: Una lista de resultados de búsqueda de Milvus.
 
     Returns:
-        Un diccionario mapeando cada título al número de chunks encontrados.
-        Ej: {'Título A': 2, 'Título B': 1, 'Título C': 2}
+        Un diccionario con el análisis de cada artículo único.
     """
-    # Usamos defaultdict para simplificar el conteo. Si una clave no existe,
-    # la inicializa con un valor de 0 (gracias a int).
-    conteo_de_titulos = defaultdict(int)
-
-    # Los resultados de la búsqueda están en el primer elemento de la lista
     if not resultados_milvus:
         return {}
-        
-    # Iteramos sobre cada resultado (hit)
+
+    # Paso 1: Agrupar contenido y contar chunks por título
+    articulos_agrupados = defaultdict(lambda: {"chunks": [], "count": 0})
     for hit in resultados_milvus:
-        # Extraemos el título de la entidad del resultado
         titulo = hit.entity.get('title')
+        if titulo: # Asegurarse de que el título no sea nulo
+            articulos_agrupados[titulo]["chunks"].append(hit.entity.get('content', ''))
+            articulos_agrupados[titulo]["count"] += 1
+
+    # Paso 2: Procesar cada artículo único con el LLM
+    resultado_final = {}
+    for titulo, data in articulos_agrupados.items():
+        contenido_completo = "\n---\n".join(data["chunks"])
         
-        # Si el título existe, incrementamos su contador en el diccionario
-        if titulo:
-            conteo_de_titulos[titulo] += 1
+        full_prompt = f"""
+        Recibirás un título de un artículo de divulgación de la NASA y su contenido.
+        Tus objetivos son:
+        1. Darme un nuevo titulo de maximo dos palabras que describa al articulo lo mejor posible.
+        2. Darme la categoría mas adecuada del articulo. Implicitamente sabes que va a ser de Astrobiologia, asi que categoriza a un nivel mas bajo.
+        3. Darme un resumen conciso de lo más importante del artículo.
+        
+        La salida debe ser estrictamente un diccionario JSON como este: {{"littletitle": "...", "category": "...", "summarize": "..."}}
+
+        **Título del artículo:**
+        {titulo}
+
+        **Contenido del artículo (Knowledge):**
+        ---
+        {contenido_completo}
+        ---
+        """
+        
+        try:
+            # Hacemos la llamada a la API
+            respuesta_llm_str = ""
+            chunks = gemini.gemini_generate(full_prompt)
+            # for chunk in chunks:
+            #     respuesta_llm_str += chunk.text
+            # Parseamos la respuesta JSON del LLM
+            analisis = parse_json_string(chunks.text)
+            # Construimos la entrada final para este título
+            resultado_final[titulo] = {
+                "littletitle": analisis.get('littletitle','N/A'),
+                "count": data["count"],
+                "category": analisis.get("category", "N/A"),
+                "summarize": analisis.get("summarize", "N/A")
+            }
+        except (json.JSONDecodeError, TypeError) as e:
+            # traceback.print_exc()
+            print(f"Error al procesar el artículo '{titulo}': {e}")
+            # Opcional: añadir una entrada de error al resultado
+            resultado_final[titulo] = {
+                "littletitle": "Error al procesar titulo nuevo",
+                "count": data["count"],
+                "category": "Error de procesamiento",
+                "summarize": "No se pudo generar el resumen."
+            }
             
-    return dict(conteo_de_titulos) # Convertimos a un dict normal para la salida
+    return resultado_final
 
 class requestAnalyzeArticle(BaseModel):
     title:Optional[str]=None,
@@ -167,11 +212,12 @@ def analyze_article(request:requestAnalyzeArticle):
 class requestLlmResponse(BaseModel):
     prompt: str
 
-@app.post("/data_ingestion")
+@app.post("/article_search")
 def article_search(request: requestLlmResponse):
-    knowledge = semantic_search(request.prompt, 4)
+    knowledge = semantic_search(request.prompt)
     # print('KNOWLEDGE',knowledge,flush=True)
-    return contar_chunks_por_titulo(knowledge)
+    return procesar_articulos_desde_milvus(knowledge)
+    # print(asdasd,'AKANSLKJNDAKJSNDJLA',flush=True)
     # print("TITULOS RELEVANTES",relevant_docs,flush=True)
     
 @app.websocket("/llm_response")
@@ -182,14 +228,13 @@ async def llm_response(websocket: WebSocket):
         print('PROMPT DEL USUARIO',flush=True)
         knowledge = semantic_search(prompt)
         # print('KNOWLEDGE',knowledge,flush=True)
-        relevant_docs = contar_chunks_por_titulo(knowledge)
-        print("TITULOS RELEVANTES",relevant_docs,flush=True)
         content = [
             hit.entity.get('content')
             for hit in knowledge
         ]
         full_prompt = f"""
-        Con el contexto proporcionado, responde acertivamente la pregunta del usuario.
+        Toma el contexto proporcionado como base principal para responder acertivamente la pregunta del usuario.
+        Si el contexto no contiene información relevante a la pregunta del usuario, intenta responder de otras fuentes.
 
         **Contexto Proporcionado (Knowledge):**
         ---
@@ -200,7 +245,7 @@ async def llm_response(websocket: WebSocket):
         {prompt}
         """
         # print('CONTENT',content,flush=True)
-        chunks = gemini.gemini_generate(full_prompt)
+        chunks = gemini.gemini_generate(full_prompt,stream=True)
         # print('CHUNKS DEVUELTOS',chunks,flush=True)
         for chunk in chunks:
             await websocket.send_text(chunk.text)    
@@ -240,3 +285,15 @@ def data_ingestion(request: requestDataIngestion):
         print('[DEBUG] Data Inserted', flush=True)
 
     return {'done':True}
+
+class GenRequest(BaseModel):
+    document: str = ""        # texto a leer (puede ser largo)
+    user_request: str         # requerimiento del usuario (tipo de gráfico, ejes, filtros, etc.)
+
+@app.post("/api/generate_chart")
+def generate_chart(req: GenRequest):
+    combined = f"DOCUMENT: {req.document}\n### USER_REQUEST: {req.user_request}"
+    result_json_str = _chart_tool_entrypoint(combined)
+    # devolvemos ya parsed JSON
+    import json
+    return json.loads(result_json_str)

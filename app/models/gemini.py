@@ -12,7 +12,7 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 model = genai.GenerativeModel("gemini-2.5-flash-lite")
 
 # Función simple para usar Gemini con LangChain
-def gemini_generate(full_prompt:str):        
+def gemini_generate(full_prompt:str,stream=False):        
     # La API de Gemini funciona con una lista de "turnos".
     # Aquí combinamos todo en el primer turno del usuario.
     print('FULL PROMPT', full_prompt, flush=True)
@@ -25,7 +25,7 @@ def gemini_generate(full_prompt:str):
     ]
 
     print('GENERANDO CHUNKS RESPUESTA',flush=True)
-    return model.generate_content(messages, stream=True)
+    return model.generate_content(messages, stream=stream)
 
 # --- Ejemplo con PromptTemplate + LLMChain estilo manual ---
 # prompt = PromptTemplate.from_template("Explica qué es un agujero negro en una sola frase, de forma sencilla.")

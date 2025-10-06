@@ -2,7 +2,7 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { BarChart } from "@mui/x-charts/BarChart";
-import type { Articles } from "./Pag2";
+import type { ArticleAnalysis } from "./Pag2";
 
 type Item = { id: number; label: string; href: string };
 
@@ -21,7 +21,7 @@ export default function PageWithBarsAndChecklist() {
   //   { id: 10, label: "Artículo 10", href: "#" },
   // ];
 
-  const [items, ] = React.useState<Articles>(JSON.parse(localStorage.getItem('relevant_art')!));
+  const [items, ] = React.useState<ArticleAnalysis>(JSON.parse(localStorage.getItem('relevant_art')!));
   
 
   const [selected, setSelected] = React.useState<Record<number, boolean>>({});
@@ -33,7 +33,25 @@ export default function PageWithBarsAndChecklist() {
   const selectedIds = Object.entries(selected)
     .filter(([, v]) => v)
     .map(([k]) => Number(k));
-  const count = selectedIds.length;
+
+
+  const handleExport = () => {
+    // 1. Convierte el objeto 'items' a un arreglo para poder filtrar por índice
+    const itemsAsArray = Object.entries(items);
+
+    // 2. Filtra el arreglo para quedarte solo con los elementos seleccionados
+    const selectedItemsArray = itemsAsArray.filter((_, index) => 
+      selectedIds.includes(index)
+    );
+    console.log(selectedItemsArray)
+
+    // 3. Convierte el arreglo filtrado de vuelta a un objeto
+    return Object.fromEntries(selectedItemsArray);
+    
+  };
+
+  console.log(handleExport())
+    const count = selectedIds.length;
 
   // Datos base (1 sola serie, orden mayor→menor)
   const data = [
@@ -45,14 +63,14 @@ export default function PageWithBarsAndChecklist() {
   ].sort((a, b) => b.value - a.value);
 
   const categories = Object.entries(items).map((_,i) => i+1);
-  console.log(categories)
-  const values = Object.entries(items).map(([k,v]) => v);
+  const values = Object.entries(items).map(([k,v]) => v.count);
 
   // Acción del botón según cantidad
   const handlePrimaryAction = () => {
     if (count === 1) {
       navigate("/pag5"); // Analizar
     } else if (count >= 2) {
+      localStorage.setItem('selected_arts',JSON.stringify(handleExport()))
       navigate("/pag4"); // Comparar
     }
   };
@@ -79,7 +97,7 @@ export default function PageWithBarsAndChecklist() {
     if (idx >= 0 && idx < n) {
       // Aquí podrías leer la categoría clicada si lo necesitas:
       // const clickedName = categories[idx];
-      navigate("/pag5");
+      navigate("/pag4");
     }
   };
 
@@ -102,20 +120,20 @@ export default function PageWithBarsAndChecklist() {
           <ul style={styles.list}>
             {Object.entries(items).map(([k,v],key) => (
               <li key={key} style={styles.listItem}>
-                {/* <label style={styles.checkRow}> */}
-                  {/* <input
+                <label style={styles.checkRow}>
+                  <input
                     type="checkbox"
-                    checked={!!selected[it.id]}
-                    onChange={() => toggle(it.id)}
+                    checked={!!selected[key]}
+                    onChange={() => toggle(key)}
                     style={styles.checkbox}
-                  /> */}
+                  />
                   <div
                     style={{ ...styles.link, cursor: 'pointer' }} // 👈 Se añade cursor: 'pointer'
                     onClick={() => navigate(`/pag5?title=${encodeURIComponent(k)}`)}
                   >
                     {key + 1} {k}
                   </div>
-                {/* </label> */}
+                </label>
               </li>
             ))}
           </ul>
@@ -125,7 +143,7 @@ export default function PageWithBarsAndChecklist() {
       {/* Derecha: gráfica de barras con overlay clicable */}
       <div style={styles.right}>
         <div style={styles.chartCard}>
-          <h3 style={styles.chartTitle}>Artículos de tu interés</h3>
+          <h3 style={styles.chartTitle}>Relevancia según tu consulta</h3>
 
           <div
             ref={chartWrapRef}

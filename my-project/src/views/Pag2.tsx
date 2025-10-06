@@ -3,40 +3,65 @@ import * as React from "react";
 import { PieChart } from "@mui/x-charts/PieChart";
 import { useNavigate } from "react-router-dom"; // 👈 Importamos el hook
 
-export type Articles = {
-  [key: string]: number;
+interface ArticleAnalysisParameters {
+  littletitle: string;
+  count: number;
+  category: string;
+  summarize: string;
+}
+
+export interface ArticleAnalysis {
+  [key: string]: ArticleAnalysisParameters;
 }
 
 export default function PageWithEditableDonutAndChat() {
-  const [values, setValues] = React.useState<Articles>(JSON.parse(localStorage.getItem('relevant_art')!));
+  const [values, setValues] = React.useState<ArticleAnalysis>(JSON.parse(localStorage.getItem('relevant_art')!));
   const navigate = useNavigate(); // 👈 inicializamos la navegación
+  
+  // 1️⃣ Agrupar los valores por categoría
+  const grouped = Object.values(values).reduce<Record<string, number>>((acc, { category, count }) => {
+    acc[category] = (acc[category] || 0) + count;
+    return acc;
+  }, {});
 
-  const data = Object.entries(values).map(([k, v], i) => ({
-    label: 'Articulo '+(i+1),
-    value: v,
-    color: ["#2563EB", "#10B981", "#F59E0B", "#EF4444"][i],
+  // 2️⃣ Crear los datos para la gráfica
+  const colorPalette = [
+    "#2563EB",
+    "#10B981",
+    "#F59E0B",
+    "#EF4444",
+    "#06B6D4",
+    "#A855F7",
+    "#84CC16",
+    "#F97316",
+  ];
+
+  const data = Object.entries(grouped).map(([category, total], i) => ({
+    label: category,
+    value: total,
+    color: colorPalette[i % colorPalette.length],
   }));
-  // React.useEffect(() => {
-  //     // 1. Obtener el STRING desde localStorage
-  //   const jsonString = localStorage.getItem('relevant_art');
+  React.useEffect(() => {
+      // 1. Obtener el STRING desde localStorage
+    const jsonString = localStorage.getItem('relevant_art');
 
-  //   // IMPORTANTE: Verificar que el dato exista antes de continuar
-  //   if (jsonString) {
-  //     try {
-  //       // 2. Convertir el STRING a un OBJETO JavaScript
-  //       const dataObject = JSON.parse(jsonString);
+    // IMPORTANTE: Verificar que el dato exista antes de continuar
+    if (jsonString) {
+      try {
+        // 2. Convertir el STRING a un OBJETO JavaScript
+        const dataObject = JSON.parse(jsonString);
 
-  //       // // 3. ¡Ahora sí! Aplicar Object.values() al OBJETO
-  //       // const new_values:Articles[] = Object.values(dataObject);
+        // // 3. ¡Ahora sí! Aplicar Object.values() al OBJETO
+        // const new_values:Articles[] = Object.values(dataObject);
         
-  //       // console.log('Valores obtenidos:', new_values); // Debería ser ['Ana', 30] o similar
-  //       setValues(dataObject);
+        // console.log('Valores obtenidos:', new_values); // Debería ser ['Ana', 30] o similar
+        setValues(dataObject);
 
-  //     } catch (error) {
-  //       console.error("Error al parsear el JSON de localStorage:", error);
-  //     }
-  //   }
-  //   }, []); // Se ejecuta cada vez que llega un mensaje nuevo
+      } catch (error) {
+        console.error("Error al parsear el JSON de localStorage:", error);
+      }
+    }
+    }, []); // Se ejecuta cada vez que llega un mensaje nuevo
   
 
   // const handleChange = (idx: number, next: number) => {

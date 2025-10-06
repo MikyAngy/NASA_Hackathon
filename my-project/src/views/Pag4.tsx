@@ -1,6 +1,7 @@
 // src/views/PagX.tsx (usa el nombre de archivo que prefieras)
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
+import type { ArticleAnalysis } from "./Pag2";
 
 /* ───────── Pie (pastel) interactivo en SVG ───────── */
 type PieData = { label: string; value: number; color: string };
@@ -57,7 +58,8 @@ function InteractivePie({
     const mid = (a0 + a1) / 2;
     const labelPos = polarToCartesian(cx, cy, radius * 0.6, mid);
 
-    const isSelected = selected.includes(i);
+    const isSelected = selected.includes(i);    
+
     return (
       <g key={i} style={{ cursor: "pointer" }} onClick={() => onToggle(i)}>
         <path
@@ -162,23 +164,29 @@ function ClickableBars({
 /* ───────── Página completa ───────── */
 export default function PageInteractivePieBarsFixed() {
   const navigate = useNavigate();
+  const [items, ] = React.useState<ArticleAnalysis>(JSON.parse(localStorage.getItem('selected_arts')!));
 
-  const pieData: PieData[] = Array.from({ length: 10 }, (_, i) => ({
-    label: `Parte ${i + 1}`,
-    value: 10,
-    color: [
-      "#2563EB",
-      "#10B981",
-      "#F59E0B",
-      "#EF4444",
-      "#06B6D4",
-      "#A855F7",
-      "#84CC16",
-      "#F97316",
-      "#0EA5E9",
-      "#E11D48",
-    ][i],
-  }));
+  const colorPalette = [
+    "#2563EB",
+    "#10B981",
+    "#F59E0B",
+    "#EF4444",
+    "#06B6D4",
+    "#A855F7",
+    "#84CC16",
+    "#F97316",
+    "#0EA5E9",
+    "#E11D48",
+  ];
+
+  const pieData: PieData[] = Object.entries(items).map(
+    ([key, { littletitle, count, category }], index) => ({
+      label: `${littletitle}`,
+      value: count,
+      color: colorPalette[index % colorPalette.length], // ciclo de colores
+    })
+  );
+
 
   // Seleccionadas (máx 3)
   const [selected, setSelected] = React.useState<number[]>([]);
@@ -191,16 +199,47 @@ export default function PageInteractivePieBarsFixed() {
     });
   };
 
-  const textForSlice = (idx: number) => `Seleccionaste la ${pieData[idx].label}.`;
+const get_summarize = (idx: number): string => {
+  // 1. Convierte las entradas del objeto a un arreglo
+  const entries = Object.entries(items);
+
+  // 2. Valida que el índice esté dentro de los límites del arreglo
+  if (idx < 0 || idx >= entries.length) {
+    return 'Índice no válido';
+  }
+
+  // 3. Accede al objeto de datos del artículo en la posición 'idx'
+  // entries[idx] es un par [key, value], por eso tomamos el [1]
+  const articleData = entries[idx][1];
+
+  // 4. Devuelve el resumen o un texto por defecto si no existe
+  return articleData.summarize || 'Sin información';
+};
+
+const get_title = (idx: number): string => {
+  // 1. Convierte las entradas del objeto a un arreglo
+  const entries = Object.entries(items);
+
+  // 2. Valida que el índice esté dentro de los límites del arreglo
+  if (idx < 0 || idx >= entries.length) {
+    return 'Índice no válido';
+  }
+
+  // 3. Accede al objeto de datos del artículo en la posición 'idx'
+  // entries[idx] es un par [key, value], por eso tomamos el [1]
+  const articleData = entries[idx][1];
+
+  // 4. Devuelve el resumen o un texto por defecto si no existe
+  return articleData.littletitle || 'Sin información';
+};
 
   // Barras (1 dato por categoría, ordenadas desc)
-  const barData: BarItem[] = [
-    { name: "NombreA", value: 9 },
-    { name: "NombreB", value: 7 },
-    { name: "NombreC", value: 6 },
-    { name: "NombreD", value: 4 },
-    { name: "NombreE", value: 2 },
-  ].sort((a, b) => b.value - a.value);
+ const barData: BarItem[] = Object.values(items)
+  .map(({ littletitle, count }) => ({
+    name: littletitle,
+    value: count,
+  }))
+  .sort((a, b) => b.value - a.value);
 
   // 👇 Navega a /pag5 al hacer click en barras
   const onBarClick = (_i: number) => {
@@ -255,11 +294,11 @@ export default function PageInteractivePieBarsFixed() {
                 onClick={() => has && navigate("/pag5")}
               >
                 <div style={styles.textBoxTitle}>
-                  {has ? `Caja ${slot + 1}` : `Caja ${slot + 1} (oculta)`}
+                  {has ? get_title(idx) : `Caja ${slot + 1} (oculta)`}
                 </div>
                 <div style={styles.textBoxBody}>
                   {has
-                    ? textForSlice(idx)
+                    ? get_summarize(idx)
                     : "Selecciona una parte del pastel para mostrar esta caja."}
                 </div>
               </div>

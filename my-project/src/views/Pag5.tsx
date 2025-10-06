@@ -1,9 +1,8 @@
 // src/pages/PageDocAndChat.tsx
 import * as React from "react";
-import { BarChart } from "@mui/x-charts/BarChart";
-import type { Articles } from "./Pag2";
-import { data, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useWebSocket } from "../utils/useWebSocket";
+import pdfImage from './pdf_Art.png';
 
   const CHART_HEIGHT = 380;
 
@@ -114,6 +113,7 @@ export default function PageDocAndChat() {
     <div style={styles.page}>
       {/* Izquierda: página externa embebida */}
       <div style={styles.left}>
+        {/* <img src={pdfImage} alt="" style={styles.image}/> */}
         <div style={styles.leftHeader}></div>
         {/* <BarChart
           xAxis={[{ data: categories, scaleType: "band" }]}
@@ -129,14 +129,14 @@ export default function PageDocAndChat() {
           </a>
         </div>
         <div style={styles.iframeWrap}>
-          {/* Nota: si el sitio bloquea iframes, usa el botón "Abrir en pestaña nueva" */}
+          {/* Nota: si el sitio bloquea iframes, usa el botón "Abrir en pestaña nueva" 
           <iframe
             src={DOC_URL}
             style={styles.iframe}
             title="NCBI Article"
             referrerPolicy="no-referrer"
             sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-          />
+          />*/}
         </div>
       </div>
 
@@ -186,6 +186,12 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 16,
     boxShadow: "0 6px 16px rgba(0,0,0,0.15)",
     overflow: "hidden",
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover', // La magia está aquí
+    // objectPosition: 'center' // Opcional: centra la imagen
   },
   leftHeader: {
     display: "flex",

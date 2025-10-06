@@ -21,7 +21,7 @@ export default function CenterSearchWeb() {
 
     try {
       // 2. Realiza la petición fetch
-      const response = await fetch('http://localhost:8000/data_ingestion', {
+      const response = await fetch('http://localhost:8000/article_search', {
         method: 'POST', // Especifica el método
         headers: {
           'Content-Type': 'application/json', // Informa al servidor que envías JSON
@@ -39,7 +39,7 @@ export default function CenterSearchWeb() {
       // setResponseMessage(result.message || 'Datos enviados con éxito');
       // console.log('Respuesta del servidor:', result);
       localStorage.setItem('relevant_art',JSON.stringify(result))
-      navigate("/pag3");
+      navigate("/pag2");
 
     } catch (err: any) {
       // setError(err.message);
