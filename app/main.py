@@ -225,7 +225,7 @@ async def llm_response(websocket: WebSocket):
     await websocket.accept()
     while True:
         prompt = await websocket.receive_text()
-        print('PROMPT DEL USUARIO',flush=True)
+        # print('PROMPT DEL USUARIO',flush=True)
         knowledge = semantic_search(prompt)
         # print('KNOWLEDGE',knowledge,flush=True)
         content = [
